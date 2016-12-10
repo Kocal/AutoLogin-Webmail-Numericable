@@ -1,32 +1,43 @@
-var url = "https://webmail.numericable.fr/";
+var url = 'https://webmail.numericable.fr/'
 
-chrome.browserAction.onClicked.addListener(function(tab) {
-    chrome.storage.sync.get(["identifiant", "domaine", "motdepasse"], function(opts) {
-        if(opts.identifiant == void 0 || opts.domaine == void 0 || opts.motdepasse == void 0) {
-            alert("Impossible de s'authentifier, merci de renseigner tous les champs");
-            chrome.tabs.create({url: "options.html"});
-            return;
-        }
-        
-        options = opts;
-        //alert(options.identifiant + " - " + options.domaine + " - " + options.motdepasse);
+// On clear les données synchronisées, car elles sont désormais sauvegardées en local
+chrome.storage.sync.get(['identifiant', 'domaine', 'motdepasse'], function (options) {
+  if (options.identifiant || options.domaine || options.motdepasse) {
+    alert(`Suite à une mise-à-jour importante de l'extension, vos informations de connexion ont été effacées.
 
-        chrome.tabs.create({url : url}, function(tab) {
-            chrome.tabs.onUpdated.addListener(function(tabId, changeInfo, tab) {
-                if(changeInfo.status != "complete" || url != tab.url)
-                    return;
-                
-                //alert(url + '\n' + tab.url);
-                
-                chrome.tabs.executeScript(tab.id, {
-                    code : '/*document.body.style.background="red";*/' +
-                        'document.querySelector("#id_login").value ="' + opts.identifiant + '";' + 
-                        'document.querySelector("#id_domain").value = "' + opts.domaine + '";'+
-                        'document.querySelector("#id_pwd").value = "' + opts.motdepasse + '";'+
-                        'document.querySelector("form[name=\'ident\']").submit();'
-                });
-            });
-        });
-    });
-});
+Merci de les renseigner à nouveau.`)
 
+    chrome.storage.sync.clear()
+    chrome.tabs.create({url: 'options.html'})
+  }
+})
+
+chrome.browserAction.onClicked.addListener(function () {
+  chrome.storage.local.get(['identifier', 'domain', 'password'], function (options) {
+    const identifier = options.identifier || false
+    const domain = options.domain || false
+    const password = options.password || false
+
+    if (!identifier || !domain || !password) {
+      alert("Impossible de s'authentifier, merci de renseigner tous les champs")
+      chrome.tabs.create({url: 'options.html'})
+      return
+    }
+
+    chrome.tabs.create({url: url}, function (createdTab) {
+      chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, updatedTab) {
+        if (createdTab.id != updatedTab.id)
+          return
+
+        chrome.tabs.executeScript(updatedTab.id, {
+          code: `
+            document.querySelector('#id_login').value = "${options.identifier}";
+            document.querySelector('#id_domain').value = "${options.domain}";
+            document.querySelector('#id_pwd').value = "${options.password}";
+            document.querySelector('form[name="ident"]').submit();
+           `
+        })
+      })
+    })
+  })
+})

@@ -1,45 +1,41 @@
-var form = document.querySelector("form#options_connexion"),
-    identifiant = form.querySelector("#input_identifiant"),
-    domaine = form.querySelector("#input_domaine"),
-    motdepasse = form.querySelector("#input_motdepasse"),
+const $form = document.querySelector('form#options_connexion')
+const $identifier = $form.querySelector('#input_identifier')
+const $domain = $form.querySelector('#input_domain')
+const $password = $form.querySelector('#input_password')
 
-    identifiant_valeur = domaine_valeur = motdepasse_valeur = "";
+chrome.storage.local.get(['identifier', 'domain'], function (options) {
+  $identifier.value = options.identifier || options.identifiant || ''
+  $domain.value = options.domain || options.domaine || ''
+})
 
-chrome.storage.sync.get(["identifiant", "domaine"], function(options) {
-    if(options.identifiant != void 0) {
-        identifiant.value = options.identifiant;
-    }
+$form.addEventListener('submit', function (e) {
+  e.preventDefault()
 
-    if(options.domaine != void 0) {
-        domaine.value = options.domaine;
-    }
-});
+  if (!$identifier.value || !$domain.value || !$password.value) {
+    alert('Merci de renseigner tous les champs !')
+    return
+  }
 
-form.addEventListener("submit", function(e) {
-    e.preventDefault();
+  chrome.storage.local.set({
+    identifier: $identifier.value,
+    domain: $domain.value,
+    password: $password.value,
+  }, function () {
 
-    identifiant_valeur = identifiant.value;
-    domaine_valeur = domaine.value;
-    motdepasse_valeur = motdepasse.value;
+    chrome.storage.local.get(['identifier', 'domain', 'password'], function (options) {
+      if (options.identifier == $identifier.value
+        && options.domain == $domain.value
+        && options.password == $password.value) {
+        alert('Les options ont bien étés sauvegardées !')
 
-    if(identifiant_valeur == "" || domaine_valeur == "" || motdepasse_valeur == "") {
-        alert("Merci de renseigner tous les champs !");
-        return;
-    }
+        chrome.tabs.getCurrent(function(tab) {
+          chrome.tabs.remove(tab.id)
+        })
 
-    chrome.storage.sync.set({"identifiant" : identifiant_valeur, "domaine" : domaine_valeur, "motdepasse" : motdepasse_valeur}, function() {
+      } else {
+        alert("Une erreur s'est produite lors de la sauvegarde des options.")
+      }
+    })
+  })
 
-        chrome.storage.sync.get(["identifiant", "domaine", "motdepasse"], function(options) {
-            console.log(options);
-
-            if(options.identifiant == identifiant_valeur
-            && options.domaine == domaine_valeur
-            && options.motdepasse == motdepasse_valeur) {
-                alert('Les options ont bien étés sauvegardées');
-            } else {
-                alert('Une erreur s\'est produite lors de la sauvegarde des options');
-            }
-        });
-    });
-
-}, false);
+}, false)
